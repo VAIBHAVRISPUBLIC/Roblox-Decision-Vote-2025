@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roblox Chat Verification Vote</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .card {
+      background: #121212;
+      max-width: 520px;
+      width: 100%;
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      margin-bottom: 25px;
+    }
+
+    h1 { font-size: 1.5rem; margin-bottom: 10px; }
+    p { font-size: 0.95rem; color: #cfcfcf; line-height: 1.5; }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 25px;
+    }
+
+    button {
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    button:hover { transform: translateY(-2px); opacity: 0.95; }
+
+    .yes { background: linear-gradient(135deg, #00c853, #64dd17); }
+    .no  { background: linear-gradient(135deg, #ff5252, #ff1744); }
+
+    .results {
+      margin-top: 20px;
+      background: #1b1b1b;
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .total {
+      border-top: 1px solid #2a2a2a;
+      padding-top: 8px;
+      font-weight: 700;
+    }
+
+    .note { font-size: 0.8rem; color: #aaa; text-align: center; margin-top: 10px; }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      margin-top: 15px;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Public Voting Card -->
+  <div class="card">
+    <h1>Roblox Chat Verification Vote</h1>
+    <p>Should Roblox remove chat for users who do not verify with ID & face?</p>
+
+    <div class="buttons">
+      <button class="yes" onclick="vote('yes')">👍 Yes</button>
+      <button class="no" onclick="vote('no')">👎 No</button>
+    </div>
+
+    <canvas id="voteChart" height="120" style="margin-top:25px;"></canvas>
+
+    <div class="results">
+      <div class="result-row"><span>Yes</span><span id="yesCount">0</span></div>
+      <div class="result-row"><span>No</span><span id="noCount">0</span></div>
+      <div class="result-row total"><span>Total</span><span id="totalCount">0</span></div>
+    </div>
+
+    <div class="note">One vote per browser · Local demo storage</div>
+  </div>
+
+  <!-- Admin Login -->
+  <div class="card" id="adminLogin">
+    <h1>Admin Access 🔐</h1>
+    <p>Enter password to unlock admin dashboard.</p>
+    <input id="adminPassword" type="password" placeholder="Admin password" />
+    <div class="buttons">
+      <button class="yes" onclick="checkPassword()">Unlock</button>
+    </div>
+    <div class="note" id="loginError" style="color:#ff5252; display:none;">Wrong password</div>
+  </div>
+
+  <!-- Admin Dashboard -->
+  <div class="card" id="adminDashboard" style="display:none;">
+    <h1>Admin Dashboard 👑</h1>
+    <div class="results">
+      <div class="result-row"><span>Yes</span><span id="adminYes">0</span></div>
+      <div class="result-row"><span>No</span><span id="adminNo">0</span></div>
+      <div class="result-row total"><span>Total</span><span id="adminTotal">0</span></div>
+    </div>
+    <div class="buttons">
+      <button class="no" onclick="resetVotes()">🗑 Reset</button>
+      <button class="yes" onclick="exportData()">📤 Export</button>
+    </div>
+  </div>
+
+<script>
+/************* CONSTANTS *************/
+const ADMIN_PASSWORD = 'RyomenSukuna';
+
+/************* STATE *************/
+let yesVotes = Number(localStorage.getItem('yesVotes')) || 0;
+let noVotes  = Number(localStorage.getItem('noVotes'))  || 0;
+let voted    = localStorage.getItem('voted');
+
+let chartYes = JSON.parse(localStorage.getItem('chartYes') || '[]');
+let chartNo  = JSON.parse(localStorage.getItem('chartNo')  || '[]');
+
+/************* UI *************/
+function updateUI() {
+  yesCount.textContent = yesVotes;
+  noCount.textContent = noVotes;
+  totalCount.textContent = yesVotes + noVotes;
+}
+
+function updateAdmin() {
+  adminYes.textContent = yesVotes;
+  adminNo.textContent = noVotes;
+  adminTotal.textContent = yesVotes + noVotes;
+}
+
+/************* VOTING *************/
+function vote(type) {
+  if (voted) return alert('You already voted');
+
+  if (type === 'yes') yesVotes++;
+  else noVotes++;
+
+  chartYes.push(yesVotes);
+  chartNo.push(noVotes);
+
+  localStorage.setItem('yesVotes', yesVotes);
+  localStorage.setItem('noVotes', noVotes);
+  localStorage.setItem('chartYes', JSON.stringify(chartYes));
+  localStorage.setItem('chartNo', JSON.stringify(chartNo));
+  localStorage.setItem('voted', 'true');
+
+  voted = true;
+  updateUI();
+  updateChart();
+}
+
+/************* CHART *************/
+const ctx = document.getElementById('voteChart');
+const voteChart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: chartYes.map((_, i) => i + 1),
+    datasets: [
+      { label: 'Yes 📈', data: chartYes, borderWidth: 3, tension: 0.4 },
+      { label: 'No 📉',  data: chartNo,  borderWidth: 3, tension: 0.4 }
+    ]
+  },
+  options: { responsive: true }
+});
+
+function updateChart() {
+  voteChart.data.labels = chartYes.map((_, i) => i + 1);
+  voteChart.update();
+}
+
+/************* ADMIN *************/
+function checkPassword() {
+  if (adminPassword.value === ADMIN_PASSWORD) {
+    adminLogin.style.display = 'none';
+    adminDashboard.style.display = 'block';
+    updateAdmin();
+  } else {
+    loginError.style.display = 'block';
+  }
+}
+
+function resetVotes() {
+  if (!confirm('Reset all votes?')) return;
+  yesVotes = 0; noVotes = 0; voted = null;
+  chartYes = []; chartNo = [];
+  localStorage.clear();
+  updateUI(); updateAdmin(); updateChart();
+}
+
+function exportData() {
+  const data = { yesVotes, noVotes, total: yesVotes + noVotes };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'vote-results.json';
+  a.click();
+}
+
+updateUI();
+</script>
+</body>
+</html>
