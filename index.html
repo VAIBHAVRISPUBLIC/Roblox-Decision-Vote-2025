@@ -4,7 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Roblox Chat Verification Vote</title>
+
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Firebase (Realtime Database) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
   <style>
     body {
       margin: 0;
@@ -54,11 +61,11 @@
       font-size: 1rem;
       cursor: pointer;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
+      color: #000;
+      font-weight: bold;
     }
 
-    button:active {
-      transform: scale(0.95);
-    }
+    button:active { transform: scale(0.95); }
 
     .yes {
       background: linear-gradient(135deg, #00ff99, #00cc66);
@@ -70,13 +77,9 @@
       box-shadow: 0 0 15px rgba(255,77,77,0.5);
     }
 
-    button:hover {
-      transform: translateY(-3px);
-    }
+    button:hover { transform: translateY(-3px); }
 
-    canvas {
-      margin-top: 15px;
-    }
+    canvas { margin-top: 15px; }
 
     .footer {
       margin-top: 15px;
@@ -88,7 +91,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>Should Roblox give chat again for unverified users?</h1>
+    <h1>Should Roblox remove chat for unverified users?</h1>
 
     <div class="stats">
       <div>🟢 Yes: <span id="yesCount">0</span></div>
@@ -111,60 +114,66 @@
   </div>
 
   <script>
-    let yesVotes = Number(localStorage.getItem('yesVotes')) || 0;
-    let noVotes = Number(localStorage.getItem('noVotes')) || 0;
-    let hasVoted = localStorage.getItem('hasVoted');
+  /* ✅ FIREBASE (WORKS WITH GITHUB PAGES – NO MODULES) */
+  const firebaseConfig = {
+    apiKey: "AIzaSyDmeLHlVGJPTd_u3-7p06RJI06a5RfowMo",
+    authDomain: "roblox-vote-2025.firebaseapp.com",
+    databaseURL: "https://roblox-vote-2025-default-rtdb.firebaseio.com",
+    projectId: "roblox-vote-2025",
+    storageBucket: "roblox-vote-2025.appspot.com",
+    messagingSenderId: "1009095964850",
+    appId: "1:1009095964850:web:f18254e00f81b5d39e31ab"
+  };
 
-    const yesEl = document.getElementById('yesCount');
-    const noEl = document.getElementById('noCount');
-    const totalEl = document.getElementById('totalCount');
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const votesRef = db.ref('votes');
 
-    function updateStats() {
-      yesEl.textContent = yesVotes;
-      noEl.textContent = noVotes;
-      totalEl.textContent = yesVotes + noVotes;
-      chart.data.datasets[0].data = [yesVotes, noVotes];
-      chart.update();
+  const yesEl = document.getElementById('yesCount');
+  const noEl = document.getElementById('noCount');
+  const totalEl = document.getElementById('totalCount');
+
+  const ctx = document.getElementById('voteChart').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Yes', 'No'],
+      datasets: [{
+        data: [0, 0],
+        backgroundColor: ['#00ff99', '#ff4d4d'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      plugins: { legend: { labels: { color: 'white' } } }
+    }
+  });
+
+  // 🌍 LIVE SYNC FOR ALL USERS
+  votesRef.on('value', snap => {
+    const data = snap.val() || { yes: 0, no: 0 };
+    yesEl.textContent = data.yes;
+    noEl.textContent = data.no;
+    totalEl.textContent = data.yes + data.no;
+    chart.data.datasets[0].data = [data.yes, data.no];
+    chart.update();
+  });
+
+  function vote(type) {
+    if (localStorage.getItem('hasVoted')) {
+      alert('You already voted!');
+      return;
     }
 
-    function vote(type) {
-      if (hasVoted) {
-        alert('You have already voted!');
-        return;
-      }
-
-      if (type === 'yes') {
-        yesVotes++;
-        localStorage.setItem('yesVotes', yesVotes);
-      } else {
-        noVotes++;
-        localStorage.setItem('noVotes', noVotes);
-      }
-
-      localStorage.setItem('hasVoted', 'true');
-      hasVoted = true;
-      updateStats();
-    }
-
-    const ctx = document.getElementById('voteChart').getContext('2d');
-    const chart = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: ['Yes', 'No'],
-        datasets: [{
-          data: [yesVotes, noVotes],
-          backgroundColor: ['#00ff99', '#ff4d4d'],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        plugins: {
-          legend: { labels: { color: 'white' } }
-        }
-      }
+    votesRef.transaction(current => {
+      if (!current) current = { yes: 0, no: 0 };
+      if (type === 'yes') current.yes++;
+      else current.no++;
+      return current;
     });
 
-    updateStats();
-  </script>
+    localStorage.setItem('hasVoted', 'true');
+  }
+</script>
 </body>
 </html>
